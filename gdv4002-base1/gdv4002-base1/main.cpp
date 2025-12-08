@@ -1,184 +1,18 @@
 #include "Engine.h"
 #include "glPrint.h"
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <bitset>
 #include "KeyDefs.h"
-
-using namespace glm;
-
-class VectorTank;
-
-// Function prototypes
-void myKeyboardHandler(GLFWwindow* window, int key, int scancode, int action, int mods);
-void myRender(GLFWwindow* window);
-void displayTransformMatrix(VectorTank* tank);
+#include "VectorTank.h"
 
 // Global variables
 std::bitset<5> keys{ 0 };
 
 
-#pragma region Vector Tank declaration
-
-
-class VectorTank : public GameObject2D {
-
-private:
-		
-	// Tank velocity (scalar value - we'll use orientation to determine direction)
-	// Distance per-second (constant for this demo)
-	const float		velocity = 0.4f;
-
-	// Derived values - matrices based on position and orientation
-	glm::mat4		T, R, TR; // T (translation); R (rotation)
-
-
-	// Private API
-	void calculateDerivedMatices(void);
-
-public:
-
-	VectorTank(glm::vec2 initPosition, float initOrientation, glm::vec2 initSize, GLuint initTextureID);
-
-	// Accessor methods
-	const glm::mat4& getRotationMatrix(void);
-	const glm::mat4& getModelTransformMatrix(void);
-
-	// Interaction methods
-
-	// Move forward (direction = 1) or backward (direction = -1)
-	void move(float tDelta, float direction);
-
-	// Rotate by constant rate (30 degrees per second) in direction determined by direction = 1 (counter-clockwise - following convention) or -1 (clockwise)
-	void rotate(float tDelta, float direction);
-
-	void update(double tDelta) override;
-	void render(void) override;
-};
-
-#pragma endregion
-
-
-#pragma region Vector Tank definition
-
-void VectorTank::calculateDerivedMatices(void) {
-
-	const glm::mat4 I = glm::mat4(1.0f); // create identity matrix
-
-	T = glm::translate(I, glm::vec3(position, 0.0f));
-	R = glm::rotate(I, orientation, glm::vec3(0.0f, 0.0f, 1.0f));
-	TR = T * R;
-}
-
-VectorTank::VectorTank(glm::vec2 initPosition, float initOrientation, glm::vec2 initSize, GLuint initTextureID) : GameObject2D(initPosition, initOrientation, initSize, initTextureID) {
-
-	calculateDerivedMatices();
-}
-
-const glm::mat4& VectorTank::getRotationMatrix(void) {
-
-	return R;
-}
-
-const glm::mat4& VectorTank::getModelTransformMatrix(void) {
-
-	return TR;
-}
-
-void VectorTank::update(double tDelta) {
-
-	const float distancePerSecond = 0.5f;
-	const float rotationPerSecond = glm::radians(45.0f);
-
-	if (keys[Key::W])
-		position += vec2(
-			cosf(orientation) * distancePerSecond * tDelta,
-			sinf(orientation) * distancePerSecond * tDelta);
-	else if (keys[Key::S])
-		position -= vec2(
-			cosf(orientation) * distancePerSecond * tDelta,
-			sinf(orientation) * distancePerSecond * tDelta);
-
-	if (keys[Key::A])
-		orientation += rotationPerSecond * (float)tDelta;
-	else if (keys[Key::D])
-		orientation -= rotationPerSecond * (float)tDelta;
-
-	calculateDerivedMatices();
-}
-
-void VectorTank::render(void) {
-
-	float w = getViewplaneWidth();
-	float h = getViewplaneHeight();
-
-	// Render principles axes
-	glLineWidth(2.0f);
-	glLineStipple(1, 0xF0F0);
-	glEnable(GL_LINE_STIPPLE);
-
-	glBegin(GL_LINES);
-
-	glColor3f(1.0f, 0.0f, 0.0f);
-	glVertex2f(0.0f, 0.0f);
-	glVertex2f(w / 2.0f, 0.0f);
-
-	glColor3f(0.0f, 1.0f, 0.0f);
-	glVertex2f(0.0f, 0.0f);
-	glVertex2f(0.0f, h / 2.0f);
-
-	glEnd();
-
-	glLineWidth(1.0f);
-	glDisable(GL_LINE_STIPPLE);
-
-	// Render tank
-
-	glPushMatrix();
-
-	glTranslatef(position.x, position.y, 0.0f);
-	glRotatef(glm::degrees(orientation), 0.0f, 0.0f, 1.0f);
-	glScalef(size.x, size.y, 1.0f);
-
-	glColor3f(0.0f, 0.8f, 0.0f);
-
-	// Tank body
-	glBegin(GL_LINE_LOOP);
-
-	glVertex2f(-0.1f, 0.05f);
-	glVertex2f(0.1f, 0.05f);
-	glVertex2f(0.1f, -0.05f);
-	glVertex2f(-0.1f, -0.05f);
-
-	glEnd();
-
-	// Turret
-	glBegin(GL_LINE_LOOP);
-
-	glVertex2f(-0.05f, 0.04f);
-	glVertex2f(0.075f, 0.0f);
-	glVertex2f(-0.05f, -0.04f);
-
-	glEnd();
-
-	// principle axes
-	
-	glBegin(GL_LINES);
-
-	glColor3f(1.0f, 0.0f, 0.0f);
-	glVertex2f(0.0f, 0.0f);
-	glVertex2f(0.4f, 0.0f);
-
-	glColor3f(0.0f, 1.0f, 0.0f);
-	glVertex2f(0.0f, 0.0f);
-	glVertex2f(0.0f, 0.4f);
-
-	glEnd();
-
-	glPopMatrix();
-}
-
-#pragma endregion
+// Function prototypes
+void myKeyboardHandler(GLFWwindow* window, int key, int scancode, int action, int mods);
+void myRender(GLFWwindow* window);
+void renderGlobalAxes();
+void displayTransformMatrix(VectorTank* tank);
 
 
 int main(void) {
@@ -220,13 +54,40 @@ int main(void) {
 
 void myRender(GLFWwindow* window) {
 
+	// Render principles axes
+	renderGlobalAxes();
+	
+	// Render tank
 	VectorTank* tank = dynamic_cast<VectorTank*>(getObject("tank"));
 	tank->render();
 
 	displayTransformMatrix(tank);
 }
 
+void renderGlobalAxes() {
 
+	float w = getViewplaneWidth();
+	float h = getViewplaneHeight();
+
+	glLineWidth(2.0f);
+	glLineStipple(1, 0xF0F0);
+	glEnable(GL_LINE_STIPPLE);
+
+	glBegin(GL_LINES);
+
+	glColor3f(1.0f, 0.0f, 0.0f);
+	glVertex2f(0.0f, 0.0f);
+	glVertex2f(w / 2.0f, 0.0f);
+
+	glColor3f(0.0f, 1.0f, 0.0f);
+	glVertex2f(0.0f, 0.0f);
+	glVertex2f(0.0f, h / 2.0f);
+
+	glEnd();
+
+	glLineWidth(1.0f);
+	glDisable(GL_LINE_STIPPLE);
+}
 
 // Function to display text overlay showing the contents of the tank's transformation matrix
 void displayTransformMatrix(VectorTank* tank) {
@@ -346,20 +207,6 @@ void myKeyboardHandler(GLFWwindow* window, int key, int scancode, int action, in
 		case GLFW_KEY_D:
 			keys[Key::D] = true;
 			break;
-
-		case GLFW_KEY_SPACE:
-
-			VectorTank* tank = (VectorTank*)getObject("tank");
-
-			glm::mat4 M = tank->getRotationMatrix();
-
-			printf("%.3f, %.3f, %.3f, %.3f\n", M[0].x, M[0].y, M[0].z, M[0].w);
-			printf("%.3f, %.3f, %.3f, %.3f\n", M[1].x, M[1].y, M[1].z, M[1].w);
-			printf("%.3f, %.3f, %.3f, %.3f\n", M[2].x, M[2].y, M[2].z, M[2].w);
-			printf("%.3f, %.3f, %.3f, %.3f\n", M[3].x, M[3].y, M[3].z, M[3].w);
-
-			printf("\n");
-			break;
 		}
 	}
 	// If not check a key has been released
@@ -368,10 +215,6 @@ void myKeyboardHandler(GLFWwindow* window, int key, int scancode, int action, in
 		// handle key release events
 		switch (key)
 		{
-		case GLFW_KEY_ESCAPE:
-			// If escape is pressed tell GLFW we want to close the window (and quit)
-			glfwSetWindowShouldClose(window, true);
-			break;
 		case GLFW_KEY_W:
 			keys[Key::W] = false;
 			break;
