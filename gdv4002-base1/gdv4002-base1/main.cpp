@@ -6,7 +6,8 @@
 
 // Global variables
 std::bitset<5> keys{ 0 };
-
+GLuint myFontNormal = 0;
+GLuint myFontUnderline = 0;
 
 // Function prototypes
 void myKeyboardHandler(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -27,7 +28,9 @@ int main(void) {
 		return initResult; // exit if setup failed
 	}
 
-	glBuildFont();
+	myFontNormal = glBuildFont(L"Consolas", 24);
+	myFontUnderline = glBuildFont(L"Consolas", 24,  GLFONT_STYLE::BOLD | GLFONT_STYLE::UNDERLINE);
+
 
 	//
 	// Setup game scene objects here
@@ -102,8 +105,10 @@ void displayTransformMatrix(VectorTank* tank) {
 	glLoadIdentity();
 	glOrtho(-4.0f, 4.0f, -4.0f, 4.0f, -1, 1);
 
-
+	
 	// Print current angle...
+	glSetCurrentFont(myFontUnderline);
+
 	glColor3f(1.0f, 1.0f, 1.0f);
 
 	glRasterPos2f(-4.0f, 2.0f);
@@ -113,6 +118,8 @@ void displayTransformMatrix(VectorTank* tank) {
 
 	
 	// Print x column vector (in red)
+	glSetCurrentFont(myFontNormal);
+
 	glColor3f(1.0, 0.0, 0.0);
 
 	glRasterPos2f(-4.0f, 3.6f);

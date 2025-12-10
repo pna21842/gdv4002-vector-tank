@@ -1,70 +1,84 @@
 
-#define WIN32_LEAN_AND_MEAN
-
-#include <Windows.h>
 #include <stdio.h>
-#include "GraphicsCore.h"
 #include "glPrint.h"
 
+// Current font glPrint will use
+static GLuint currentFont = 0;
 
-
-// Reference to OpenGL display list which stores font information
-static GLuint		fnt_base = 0;
-
-
-bool glBuildFont(void)
+// Create a new font and return the OpenGL resource id.  This does not make the new font the current font for rendering.
+GLuint glBuildFont(LPCWSTR fontName, int fontHeight, int style)
 {
-	HFONT		font = NULL;
+	HFONT		winFont = NULL;
 	HDC			hDC = NULL;
 
 	// Get device context
 	hDC = GetDC(NULL);
 	if (!hDC)
-		return false;
+		return 0;
 
-	// Generate and validate display list
-	fnt_base = glGenLists(256);
-	if (!fnt_base) {
+	// Generate and validate display list to hold font rendering data
+	GLuint glFont = glGenLists(256);
+	if (!glFont) {
 		ReleaseDC(NULL, hDC);
-		return false;
+		return 0;
 	}
 
-	// Create font
-	if (!(font = CreateFont(-18,						// Height Of Font
-		0,							// Width Of Font
-		0,							// Angle Of Escapement
-		0,							// Orientation Angle
-		FW_BOLD,					// Font Weight
-		FALSE,						// Italic
-		FALSE,						// Underline
-		FALSE,						// Strikeout
-		ANSI_CHARSET,				// Character Set Identifier
-		OUT_TT_PRECIS,				// Output Precision
-		CLIP_DEFAULT_PRECIS,		// Clipping Precision
-		ANTIALIASED_QUALITY,		// Output Quality
+	// Create windows font
+	winFont = CreateFont(-fontHeight,							// Height Of Font
+		0,														// Width Of Font
+		0,														// Angle Of Escapement
+		0,														// Orientation Angle
+		(style & GLFONT_STYLE::BOLD)? FW_BOLD : FW_NORMAL,		// Font Weight
+		(style & GLFONT_STYLE::ITALIC)? TRUE : FALSE,			// Italic
+		(style & GLFONT_STYLE::UNDERLINE)? TRUE : FALSE,		// Underline
+		(style & GLFONT_STYLE::STRIKETHROUGH)? TRUE : FALSE,	// Strikeout
+		ANSI_CHARSET,					// Character Set Identifier
+		OUT_TT_PRECIS,					// Output Precision
+		CLIP_DEFAULT_PRECIS,			// Clipping Precision
+		ANTIALIASED_QUALITY,			// Output Quality
 		FF_DONTCARE | DEFAULT_PITCH,	// Family And Pitch
-		L"Courier New"))) {			// Font Name
-		glDeleteFont();
+		fontName);
+
+	if (!winFont) {
+
+		glDeleteFont(glFont);
 		ReleaseDC(NULL, hDC);
-		return false;
+		return 0;
 	}
 
-	SelectObject(hDC, font); // Select current font
-	wglUseFontBitmapsA(hDC, 0, 256, fnt_base); // Builds characters
+	SelectObject(hDC, winFont); // Select current font
+	wglUseFontBitmaps(hDC, 0, 256, glFont); // Builds characters
 
 	// Release device context and dispose local resources
 	ReleaseDC(NULL, hDC);
-	DeleteObject(font);
+	DeleteObject(winFont);
 
-	return true;
+	// Return id of newly create font (display list)
+	return glFont;
 }
 
+// Set the current font to be used by glPrint.
+void glSetCurrentFont(GLuint fontToSet) {
 
-void glDeleteFont()
+	currentFont = fontToSet;
+}
+
+// Delete the specified font and return true if deleted, false otherwise.  If the currently set font is the same as fontToDelete then this is set to 0.
+bool glDeleteFont(GLuint fontToDelete)
 {
-	if (fnt_base)
-		glDeleteLists(fnt_base, 256);
-	fnt_base = 0;
+	if (fontToDelete) {
+
+		glDeleteLists(fontToDelete, 256);
+
+		if (fontToDelete == currentFont)
+			currentFont = 0;
+
+		return true;
+	}
+	else {
+
+		return false;
+	}
 }
 
 
@@ -84,7 +98,7 @@ void glPrint(const char *fmt, ...)
 
 	// Render text
 	glPushAttrib(GL_LIST_BIT);
-	glListBase(fnt_base);
+	glListBase(currentFont);
 	glCallLists((GLsizei)strlen(text), GL_UNSIGNED_BYTE, text);
 	glPopAttrib();
 }

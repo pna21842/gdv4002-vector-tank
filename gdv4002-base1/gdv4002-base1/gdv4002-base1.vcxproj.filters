@@ -39,11 +39,11 @@
     <ClCompile Include="GameObject2D.cpp">
       <Filter>Engine</Filter>
     </ClCompile>
-    <ClCompile Include="glPrint.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="VectorTank.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="glPrint.cpp">
+      <Filter>Engine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -71,11 +71,11 @@
     <ClInclude Include="KeyDefs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="glPrint.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="VectorTank.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="glPrint.h">
+      <Filter>Engine</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
